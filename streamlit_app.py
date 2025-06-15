@@ -2,78 +2,51 @@ import streamlit as st
 import numpy as np
 from PIL import Image
 import tensorflow as tf
-from tensorflow.keras.applications import (
-    EfficientNetB0, EfficientNetB1, EfficientNetB2,
-    EfficientNetB3, EfficientNetB4, EfficientNetB5,
-    ResNet50, ResNet101
-)
-from tensorflow.keras.applications.efficientnet import preprocess_input as efficientnet_preprocess
-from tensorflow.keras.applications.resnet import preprocess_input as resnet_preprocess
+import os
 
-# ===== Model & Preprocessing Setup =====
-MODEL_PATHS = {
-    "EfficientNetB0": "models/EfficientNetB0.h5",
-    "EfficientNetB1": "models/EfficientNetB1.h5",
-    "EfficientNetB2": "models/EfficientNetB2.h5",
-    "EfficientNetB3": "models/EfficientNetB3.h5",
-    "EfficientNetB4": "models/EfficientNetB4.h5",
-    "EfficientNetB5": "models/EfficientNetB5.h5",
-    "ResNet50": "models/ResNet50.h5",
-    "ResNet101": "models/ResNet101.h5"
-}
-
-PREPROCESS_MAP = {
-    "EfficientNetB0": efficientnet_preprocess,
-    "EfficientNetB1": efficientnet_preprocess,
-    "EfficientNetB2": efficientnet_preprocess,
-    "EfficientNetB3": efficientnet_preprocess,
-    "EfficientNetB4": efficientnet_preprocess,
-    "EfficientNetB5": efficientnet_preprocess,
-    "ResNet50": resnet_preprocess,
-    "ResNet101": resnet_preprocess,
-}
-
+# --- Constants ---
+MODEL_DIR = "models"
 IMAGE_SIZE = (224, 224)
-
-# Replace this with your actual class labels
-CLASS_NAMES = ["butterfly","cat","chicken","cow","dog","elephant","horse","sheep","squirrel"]
+CLASS_NAMES = open("class_names.txt").read().splitlines()
 
 @st.cache_resource
-def load_model(model_name):
-    return tf.keras.models.load_model(MODEL_PATHS[model_name])
+def load_tflite_model(model_name):
+    interpreter = tf.lite.Interpreter(model_path=os.path.join(MODEL_DIR, f"{model_name}.tflite"))
+    interpreter.allocate_tensors()
+    return interpreter
 
-def preprocess_image(image: Image.Image, model_name: str):
+def preprocess_image(image: Image.Image) -> np.ndarray:
     image = image.resize(IMAGE_SIZE)
-    image_array = np.array(image)
-    if image_array.shape[-1] == 4:
-        image_array = image_array[..., :3]  # remove alpha channel if present
-    image_array = np.expand_dims(image_array, axis=0)
-    preprocess = PREPROCESS_MAP[model_name]
-    return preprocess(image_array)
+    image = np.array(image).astype(np.float32) / 255.0  # Normalized
+    return np.expand_dims(image, axis=0)  # Add batch dim
 
-def predict_image(model, image_array, model_name):
-    predictions = model.predict(image_array)
-    predicted_class = CLASS_NAMES[np.argmax(predictions)]
-    confidence = float(np.max(predictions)) * 100
-    return predicted_class, confidence
+def predict_image(interpreter, image_array: np.ndarray):
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
 
-# ===== Streamlit UI =====
-st.set_page_config(page_title="Animal Image Classifier", layout="centered")
+    interpreter.set_tensor(input_details[0]['index'], image_array)
+    interpreter.invoke()
+    predictions = interpreter.get_tensor(output_details[0]['index'])[0]
+    top_idx = np.argmax(predictions)
+    return CLASS_NAMES[top_idx], predictions[top_idx]
 
-st.title("🐾 Animal Image Classifier")
-st.markdown("Upload an animal photo and choose a model to classify it.")
+# --- UI ---
+st.title("🐾 Animal Classifier with TFLite")
 
-uploaded_file = st.file_uploader("Choose an image", type=["jpg", "jpeg", "png"])
-model_name = st.selectbox("Select a model", list(MODEL_PATHS.keys()))
+# Load models
+model_list = sorted([f.replace(".tflite", "") for f in os.listdir(MODEL_DIR) if f.endswith(".tflite")])
+model_name = st.selectbox("Select a TFLite model", model_list)
 
-if uploaded_file and model_name:
-    image = Image.open(uploaded_file)
-    st.image(image, caption="Uploaded Image", use_container_width=True)
+uploaded_file = st.file_uploader("Upload an animal image", type=["jpg", "jpeg", "png"])
+if uploaded_file is not None:
+    image = Image.open(uploaded_file).convert("RGB")
+    st.image(image, caption="Uploaded Image", use_column_width=True)
 
+    img_array = preprocess_image(image)
     with st.spinner("Loading model and predicting..."):
-        model = load_model(model_name)
-        image_array = preprocess_image(image, model_name)
-        label, confidence = predict_image(model, image_array, model_name)
+        interpreter = load_tflite_model(model_name)
+        label, confidence = predict_image(interpreter, img_array)
 
-    st.success(f"**Prediction:** {label} ({confidence:.2f}%)")
-    st.markdown(f"Model used: **{model_name}**")
+    st.success("Prediction complete!")
+    st.markdown(f"### 🐶 Predicted Animal: `{label}`")
+    st.markdown(f"**Confidence:** `{confidence:.2%}`")
