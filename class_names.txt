@@ -1,10 +1,11 @@
-dog
-horse
-elephant
 butterfly
-chicken
+cane
 cat
+chicken
 cow
+dog
+elephant
+horse
 sheep
 squirrel
-cane
+
