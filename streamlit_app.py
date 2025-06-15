@@ -37,8 +37,8 @@ IMAGE_SIZE = (224, 224)
 
 # ✅ Updated class labels
 CLASS_NAMES = [
-    "butterfly", "cane", "cat", "chicken", "cow",
-    "dog", "elephant", "horse", "sheep", "squirrel"
+    "butterfly", "cat", "chicken", "cow",
+    "dog", "elephant", "horse", "ragno", "sheep", "squirrel"
 ]
 
 @st.cache_resource
