@@ -64,6 +64,22 @@ def predict_image(model, image_array, model_name):
 st.set_page_config(page_title="Animal Image Classifier", layout="centered")
 
 st.title("🐾 Animal Image Classifier")
+st.markdown("This study have trained several EfficientNet model and ResNet Model on Animal10 dataset")
+st.markdown("""
+Here are animal classes that you can use:
+
+1. Dog 🐶  
+2. Horse 🐴  
+3. Elephant 🐘  
+4. Butterfly 🦋  
+5. Chicken 🐔  
+6. Cat 🐱  
+7. Cow 🐮  
+8. Spider 🕷️  
+9. Squirrel 🐿️  
+10. Sheep 🐑
+""")
+st.markdown("Dataset Link: https://www.kaggle.com/datasets/alessiocorrado99/animals10")
 st.markdown("Upload an animal photo and choose a model to classify it.")
 
 uploaded_file = st.file_uploader("Choose an image", type=["jpg", "jpeg", "png"])
