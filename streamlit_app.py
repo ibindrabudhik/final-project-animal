@@ -64,7 +64,7 @@ def predict_image(model, image_array, model_name):
 st.set_page_config(page_title="Animal Image Classifier", layout="centered")
 
 st.title("🐾 Animal Image Classifier")
-st.markdown("This study have trained several EfficientNet model and ResNet Model on Animal10 dataset")
+st.markdown("This study have trained on EfficientNetB0 model on Animal10 dataset")
 st.markdown("""
 Here are animal classes that you can use:
 
